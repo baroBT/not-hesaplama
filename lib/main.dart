@@ -29,7 +29,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
     Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return; // Çökme engellendi
+      if (!mounted) return; 
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const IsimEkrani()));
     });
   }
@@ -38,7 +38,22 @@ class _SplashScreenState extends State<SplashScreen> {
     return const Scaffold(
       backgroundColor: Colors.black87,
       body: Center(
-        child: Text('BaroBT Studios', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.cyanAccent)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Üstteki büyük yazı
+            Text(
+              'Baro-BT Studios', 
+              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.cyanAccent, letterSpacing: 2.0),
+            ),
+            SizedBox(height: 15),
+            // Alttaki havalı alt yazı
+            Text(
+              'Notlarını Hesapla', 
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: Colors.white70, letterSpacing: 1.5),
+            ),
+          ],
+        ),
       ),
     );
   }
