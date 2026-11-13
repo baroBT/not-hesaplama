@@ -117,7 +117,6 @@ class AnaMenuEkrani extends StatelessWidget {
             const SizedBox(height: 15),
             ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TekDersEkrani())), child: const Text('Tek Ders Ortalama')),
             const SizedBox(height: 15),
-            // YENİ EKLENEN AYRI SEKMELER
             ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DonemSonuEkrani())), child: const Text('Dönem Sonu (Karne)')),
             const SizedBox(height: 15),
             ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const YilSonuEkrani())), child: const Text('Yıl Sonu Ortalaması')),
@@ -138,7 +137,7 @@ double _guvenliNotOku(String text) {
   return val;
 }
 
-// --- GENEL NOT HESAPLAMA (Sadece Yorum Yazar, Takdir Yok) ---
+// --- GENEL NOT HESAPLAMA ---
 class Ders {
   String ad;
   int saat;
@@ -203,7 +202,7 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Genel Not Hesaplama')),
-      body: SafeArea( // EKRANIN ALTININ KESİLMESİNİ ENGELLER
+      body: SafeArea(
         child: Column(
           children: [
             Expanded(
@@ -258,7 +257,6 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
                         else if (genelOrtalama >= 60) { yorum = "ORTA 😐"; }
                         else if (genelOrtalama >= 50) { yorum = "EH İŞTE 🤷‍♂️"; }
                         else { yorum = "İDARE EDER... (Geçtin sayılır) 😬"; }
-                        
                         _sonuc = "Ortalaman: ${genelOrtalama.toStringAsFixed(2)}\n$yorum";
                       });
                     },
@@ -266,7 +264,7 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
                   ),
                   const SizedBox(height: 8),
                   Text(_sonuc, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo, fontSize: 16)),
-                  const SizedBox(height: 10), // Navigasyon tuşları için ekstra boşluk
+                  const SizedBox(height: 10),
                 ],
               ),
             )
@@ -377,25 +375,20 @@ class DonemSonuEkrani extends StatefulWidget {
 }
 
 class _DonemSonuEkraniState extends State<DonemSonuEkrani> {
-  bool _tekTekGir = false; // Sağ üstteki buton
-  // Genel girilecekse
+  bool _tekTekGir = false;
   final _s1Ort = TextEditingController();
   final _s2Ort = TextEditingController();
-  // Tek tek girilecekse
   final _s1_1 = TextEditingController(); final _s1_2 = TextEditingController();
   final _s2_1 = TextEditingController(); final _s2_2 = TextEditingController();
   final _sozlu = TextEditingController(); final _proje = TextEditingController();
-  
   String _sonuc = "";
 
   void _hesapla() {
     double toplam = 0; int sayac = 0;
     if (!_tekTekGir) {
-      // Direkt ortalama girildiyse
       double n1 = _guvenliNotOku(_s1Ort.text); if (n1 >= 0) { toplam += n1; sayac++; }
       double n2 = _guvenliNotOku(_s2Ort.text); if (n2 >= 0) { toplam += n2; sayac++; }
     } else {
-      // Tek tek girildiyse
       double n1_1 = _guvenliNotOku(_s1_1.text); if (n1_1 >= 0) { toplam += n1_1; sayac++; }
       double n1_2 = _guvenliNotOku(_s1_2.text); if (n1_2 >= 0) { toplam += n1_2; sayac++; }
       double n2_1 = _guvenliNotOku(_s2_1.text); if (n2_1 >= 0) { toplam += n2_1; sayac++; }
@@ -403,7 +396,6 @@ class _DonemSonuEkraniState extends State<DonemSonuEkrani> {
       double nSoz = _guvenliNotOku(_sozlu.text); if (nSoz >= 0) { toplam += nSoz; sayac++; }
       double nPrj = _guvenliNotOku(_proje.text); if (nPrj >= 0) { toplam += nPrj; sayac++; }
     }
-
     if (sayac == 0) { setState(() => _sonuc = "Not girilmedi!"); return; }
     setState(() => _sonuc = "DÖNEM SONU ORTALAMASI:\n${(toplam / sayac).toStringAsFixed(2)}");
   }
@@ -417,12 +409,7 @@ class _DonemSonuEkraniState extends State<DonemSonuEkrani> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Dönem Sonu (Karne)'),
-        actions: [
-          Row(children: [
-            const Text('Tek Tek', style: TextStyle(fontSize: 12)),
-            Switch(value: _tekTekGir, onChanged: (v) => setState(() { _tekTekGir = v; _sonuc = ""; })),
-          ])
-        ],
+        actions: [ Row(children: [ const Text('Tek Tek', style: TextStyle(fontSize: 12)), Switch(value: _tekTekGir, onChanged: (v) => setState(() { _tekTekGir = v; _sonuc = ""; })) ]) ],
       ),
       body: SafeArea(
         child: Padding(
@@ -458,8 +445,6 @@ class _DonemSonuEkraniState extends State<DonemSonuEkrani> {
   }
 }
 
-/ = 100;
-
 // --- AYRI SEKME: YIL SONU ORTALAMASI ---
 class YilSonuEkrani extends StatefulWidget {
   const YilSonuEkrani({Key? key}) : super(key: key);
@@ -482,45 +467,4 @@ class _YilSonuEkraniState extends State<YilSonuEkrani> {
     }
     
     if (n1 > 100) n1 = 100; 
-    if (n2 > 100) n2 = 100;
-    
-    setState(() => _sonuc = "YIL SONU ORTALAMASI:\n${((n1 + n2) / 2).toStringAsFixed(2)}");
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Yıl Sonu Ortalaması')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              TextField(
-                controller: _d1, 
-                keyboardType: TextInputType.number, 
-                decoration: const InputDecoration(labelText: '1. Dönem Ortalaması')
-              ),
-              TextField(
-                controller: _d2, 
-                keyboardType: TextInputType.number, 
-                decoration: const InputDecoration(labelText: '2. Dönem Ortalaması')
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _hesapla, 
-                child: const Text('Hesapla')
-              ),
-              const SizedBox(height: 20),
-              Text(
-                _sonuc, 
-                textAlign: TextAlign.center, 
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+    if (n2
