@@ -119,7 +119,7 @@ class AnaMenuEkrani extends StatelessWidget {
             const SizedBox(height: 15),
             ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TekDersEkrani())), child: const Text('Tek Ders Ortalama')),
             const SizedBox(height: 15),
-            ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => DonemEkrani(kullaniciAdi: kullaniciAdi))), child: const Text('Dönem Hesaplama')),
+            ElevatedButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DonemEkrani())), child: const Text('Dönem ve Yıl Sonu Hesaplama')),
           ],
         ),
       ),
@@ -127,7 +127,17 @@ class AnaMenuEkrani extends StatelessWidget {
   }
 }
 
-// --- GENEL NOT HESAPLAMA (KALICI) ---
+// --- YARDIMCI FONKSİYON (Not Sınırlama 0-100) ---
+double _guvenliNotOku(String text) {
+  if (text.trim().isEmpty) return -1;
+  if (text.trim().toUpperCase() == 'G') return -1;
+  double? val = double.tryParse(text);
+  if (val == null || val < 0) return -1;
+  if (val > 100) return 100; // 100'den büyükse 100 say
+  return val;
+}
+
+// --- GENEL NOT HESAPLAMA (Saat ve Not Sınırı Eklendi) ---
 class Ders {
   String ad;
   int saat;
@@ -261,13 +271,17 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
                   children: [
                     Expanded(child: TextField(controller: _dersAdController, decoration: const InputDecoration(hintText: 'Ders Adı', isDense: true))),
                     const SizedBox(width: 10),
-                    Expanded(child: TextField(controller: _dersSaatController, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Saat', isDense: true))),
+                    Expanded(child: TextField(controller: _dersSaatController, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Saat (Max 40)', isDense: true))),
                     IconButton(
                       icon: const Icon(Icons.add, color: Colors.green),
                       onPressed: () {
                         if (_dersAdController.text.isNotEmpty && _dersSaatController.text.isNotEmpty) {
+                          int girilenSaat = int.tryParse(_dersSaatController.text) ?? 1;
+                          if (girilenSaat > 40) girilenSaat = 40;
+                          if (girilenSaat < 1) girilenSaat = 1;
+
                           setState(() {
-                            dersler.add(Ders(_dersAdController.text, int.tryParse(_dersSaatController.text) ?? 1));
+                            dersler.add(Ders(_dersAdController.text, girilenSaat));
                             _dersAdController.clear(); _dersSaatController.clear();
                           });
                           _dersleriKaydet();
@@ -333,14 +347,10 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                dersler[index].not1 = double.tryParse(n1.text) ?? -1;
-                dersler[index].not2 = double.tryParse(n2.text) ?? -1;
-                dersler[index].sozlu = double.tryParse(sz.text) ?? -1;
-                if (pr.text.trim().toUpperCase() == 'G' || pr.text.trim().isEmpty) {
-                  dersler[index].proje = -1; 
-                } else {
-                  dersler[index].proje = double.tryParse(pr.text) ?? -1; 
-                }
+                dersler[index].not1 = _guvenliNotOku(n1.text);
+                dersler[index].not2 = _guvenliNotOku(n2.text);
+                dersler[index].sozlu = _guvenliNotOku(sz.text);
+                dersler[index].proje = _guvenliNotOku(pr.text);
               });
               _dersleriKaydet();
               Navigator.pop(context);
@@ -353,7 +363,7 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
   }
 }
 
-// --- TEK DERS EKRANI ---
+// --- TEK DERS EKRANI (Not Sınırı Eklendi) ---
 class TekDersEkrani extends StatefulWidget {
   const TekDersEkrani({Key? key}) : super(key: key);
   @override
@@ -367,28 +377,22 @@ class _TekDersEkraniState extends State<TekDersEkrani> {
   final _proje = TextEditingController();
   String _sonuc = "";
 
-  double _notOku(String text, {bool projeMi = false}) {
-    if (text.trim().isEmpty) return -1; 
-    if (projeMi && text.trim().toUpperCase() == 'G') return -1; 
-    return double.tryParse(text) ?? -1;
-  }
-
   void _hesapla() {
     double toplam = 0;
     int sayac = 0;
 
-    double n1 = _notOku(_s1.text);
+    double n1 = _guvenliNotOku(_s1.text);
     if (n1 >= 0) { toplam += n1; sayac++; }
 
     if (_ikinciSinav) {
-      double n2 = _notOku(_s2.text);
+      double n2 = _guvenliNotOku(_s2.text);
       if (n2 >= 0) { toplam += n2; sayac++; }
     }
 
-    double nSozlu = _notOku(_sozlu.text);
+    double nSozlu = _guvenliNotOku(_sozlu.text);
     if (nSozlu >= 0) { toplam += nSozlu; sayac++; }
 
-    double nProje = _notOku(_proje.text, projeMi: true);
+    double nProje = _guvenliNotOku(_proje.text);
     if (nProje >= 0) { toplam += nProje; sayac++; }
 
     if (sayac == 0) {
@@ -434,54 +438,97 @@ class _TekDersEkraniState extends State<TekDersEkrani> {
   }
 }
 
-// --- DÖNEM HESAPLAMA EKRANI ---
+// --- DÖNEM VE YIL SONU HESAPLAMA (Tamamen Yenilendi) ---
 class DonemEkrani extends StatefulWidget {
-  final String kullaniciAdi;
-  const DonemEkrani({Key? key, required this.kullaniciAdi}) : super(key: key);
+  const DonemEkrani({Key? key}) : super(key: key);
   @override
   State<DonemEkrani> createState() => _DonemEkraniState();
 }
 
 class _DonemEkraniState extends State<DonemEkrani> {
-  final _ort = TextEditingController();
-  final _zayif = TextEditingController();
+  final _s1 = TextEditingController();
+  final _s2 = TextEditingController();
+  final _sozlu1 = TextEditingController();
+  final _proje1 = TextEditingController();
+  
+  final _s3 = TextEditingController();
+  final _s4 = TextEditingController();
+  final _sozlu2 = TextEditingController();
+  final _proje2 = TextEditingController();
+  
   String _sonuc = "";
 
-  void _hesapla() {
-    double? ort = double.tryParse(_ort.text);
-    int? zayif = int.tryParse(_zayif.text);
+  double? _donemOrt(List<TextEditingController> list) {
+    double toplam = 0;
+    int sayac = 0;
+    for (var c in list) {
+      double v = _guvenliNotOku(c.text);
+      if (v >= 0) { toplam += v; sayac++; }
+    }
+    if (sayac == 0) return null;
+    return toplam / sayac;
+  }
 
-    if (ort == null || zayif == null) {
-      setState(() => _sonuc = "Lütfen geçerli sayılar girin.");
+  void _hesapla() {
+    double? d1 = _donemOrt([_s1, _s2, _sozlu1, _proje1]);
+    double? d2 = _donemOrt([_s3, _s4, _sozlu2, _proje2]);
+    
+    if (d1 == null && d2 == null) {
+      setState(() => _sonuc = "En az bir döneme not gir.");
       return;
     }
-
-    if (zayif > 0) {
-      setState(() => _sonuc = "TEBRİKLER HİÇBİR ŞEY ALAMADIN MAŞALLAH!\n(Zayıf dersin var)");
-    } else if (ort >= 85) {
-      setState(() => _sonuc = "TEBRİKLER TAKDİR BELGESİ ALDIN! ÇOK İYİ!");
-    } else if (ort >= 70) {
-      setState(() => _sonuc = "TEBRİKLER TEŞEKKÜR BELGESİ ALDIN! İYİ!");
-    } else {
-      setState(() => _sonuc = "TEBRİKLER HİÇBİR ŞEY ALAMADIN MAŞALLAH!");
+    
+    String s = "";
+    if (d1 != null) s += "1. Dönem Ortalaması: ${d1.toStringAsFixed(2)}\n";
+    if (d2 != null) s += "2. Dönem Ortalaması: ${d2.toStringAsFixed(2)}\n";
+    
+    if (d1 != null && d2 != null) {
+      double yil = (d1 + d2) / 2;
+      s += "-------------------------\nYIL SONU ORTALAMASI: ${yil.toStringAsFixed(2)}";
     }
+    
+    setState(() => _sonuc = s);
+  }
+
+  Widget _alan(TextEditingController c, String label) {
+    return TextField(controller: c, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: label));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Dönem Hesaplama')),
+      appBar: AppBar(title: const Text('Dönem ve Yıl Sonu')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            TextField(controller: _ort, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Dönem Ortalaması (Örn: 85)')),
-            TextField(controller: _zayif, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Zayıf Ders Sayısı (50 altı)')),
-            const SizedBox(height: 20),
-            ElevatedButton(onPressed: _hesapla, child: const Text('Belgeyi Hesapla')),
-            const SizedBox(height: 20),
-            Text(_sonuc, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('1. Dönem Notları', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
+              _alan(_s1, '1. Sınav Ortalaması'),
+              _alan(_s2, '2. Sınav Ortalaması'),
+              _alan(_sozlu1, 'Sözlü Ortalaması'),
+              _alan(_proje1, 'Proje (0 veya G)'),
+              
+              const SizedBox(height: 20),
+              const Text('2. Dönem Notları', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue)),
+              _alan(_s3, '1. Sınav Ortalaması'),
+              _alan(_s4, '2. Sınav Ortalaması'),
+              _alan(_sozlu2, 'Sözlü Ortalaması'),
+              _alan(_proje2, 'Proje (0 veya G)'),
+              
+              const SizedBox(height: 20),
+              Center(
+                child: ElevatedButton(
+                  onPressed: _hesapla, 
+                  style: ElevatedButton.styleFrom(minimumSize: const Size(200, 50)),
+                  child: const Text('Hesapla')
+                )
+              ),
+              const SizedBox(height: 20),
+              Center(child: Text(_sonuc, textAlign: TextAlign.center, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo))),
+            ],
+          ),
         ),
       ),
     );
