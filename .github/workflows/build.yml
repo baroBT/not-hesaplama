@@ -24,16 +24,18 @@ jobs:
           
       - name: Create Flutter project structure
         run: |
+          cp lib/main.dart /tmp/main.dart
           flutter create --project-name not_hesaplama --platforms android .
+          cp /tmp/main.dart lib/main.dart
           
       - name: Get dependencies
         run: flutter pub get
         
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build APK (Split Per ABI for lowest size)
+        run: flutter build apk --release --split-per-abi
         
-      - name: Upload APK
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: app-release-apks
+          path: build/app/outputs/flutter-apk/*.apk
