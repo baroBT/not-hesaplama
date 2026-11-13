@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
-void main() { runApp(const BaroBTApp()); }
+void main() => runApp(const BaroBTApp());
 
 class BaroBTApp extends StatelessWidget {
   const BaroBTApp({Key? key}) : super(key: key);
@@ -120,19 +120,23 @@ class AnaMenuEkrani extends StatelessWidget {
   }
 }
 
-double _guvenliNotOku(String text) {
-  if (text.trim().isEmpty || text.trim().toUpperCase() == 'G') return -1;
-  double? val = double.tryParse(text);
+double _notOku(String t) {
+  if (t.trim().isEmpty || t.trim().toUpperCase() == 'G') return -1;
+  double? val = double.tryParse(t);
   if (val == null || val < 0) return -1;
   if (val > 100) return 100;
   return val;
 }
 
 class Ders {
-  String ad; int saat; double not1, not2, sozlu, proje;
-  Ders(this.ad, this.saat, {this.not1 = -1, this.not2 = -1, this.sozlu = -1, this.proje = -1});
-  Map<String, dynamic> toJson() => {'ad': ad, 'saat': saat, 'not1': not1, 'not2': not2, 'sozlu': sozlu, 'proje': proje};
-  factory Ders.fromJson(Map<String, dynamic> json) => Ders(json['ad'], (json['saat'] as num).toInt(), not1: (json['not1'] as num).toDouble(), not2: (json['not2'] as num).toDouble(), sozlu: (json['sozlu'] as num).toDouble(), proje: (json['proje'] as num).toDouble());
+  String ad; int saat; double n1, n2, sz, pr;
+  Ders(this.ad, this.saat, {this.n1 = -1, this.n2 = -1, this.sz = -1, this.pr = -1});
+  Map<String, dynamic> toJson() => {'ad': ad, 'saat': saat, 'n1': n1, 'n2': n2, 'sz': sz, 'pr': pr};
+  factory Ders.fromJson(Map<String, dynamic> json) => Ders(
+    json['ad'], (json['saat'] as num).toInt(),
+    n1: (json['n1'] as num).toDouble(), n2: (json['n2'] as num).toDouble(),
+    sz: (json['sz'] as num).toDouble(), pr: (json['pr'] as num).toDouble()
+  );
 }
 
 class GenelNotEkrani extends StatefulWidget {
@@ -167,10 +171,10 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
 
   double _ort(Ders d) {
     double t = 0; int s = 0;
-    if (d.not1 >= 0) { t += d.not1; s++; }
-    if (d.not2 >= 0) { t += d.not2; s++; }
-    if (d.sozlu >= 0) { t += d.sozlu; s++; }
-    if (d.proje >= 0) { t += d.proje; s++; }
+    if (d.n1 >= 0) { t += d.n1; s++; }
+    if (d.n2 >= 0) { t += d.n2; s++; }
+    if (d.sz >= 0) { t += d.sz; s++; }
+    if (d.pr >= 0) { t += d.pr; s++; }
     return s == 0 ? -1 : t / s;
   }
 
@@ -256,10 +260,10 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
   }
 
   void _dialog(BuildContext context, int i) {
-    final n1 = TextEditingController(text: dersler[i].not1 >= 0 ? dersler[i].not1.toString() : '');
-    final n2 = TextEditingController(text: dersler[i].not2 >= 0 ? dersler[i].not2.toString() : '');
-    final sz = TextEditingController(text: dersler[i].sozlu >= 0 ? dersler[i].sozlu.toString() : '');
-    final pr = TextEditingController(text: dersler[i].proje >= 0 ? dersler[i].proje.toString() : '');
+    final n1 = TextEditingController(text: dersler[i].n1 >= 0 ? dersler[i].n1.toString() : '');
+    final n2 = TextEditingController(text: dersler[i].n2 >= 0 ? dersler[i].n2.toString() : '');
+    final sz = TextEditingController(text: dersler[i].sz >= 0 ? dersler[i].sz.toString() : '');
+    final pr = TextEditingController(text: dersler[i].pr >= 0 ? dersler[i].pr.toString() : '');
 
     showDialog(
       context: context,
@@ -281,10 +285,10 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                dersler[i].not1 = _guvenliNotOku(n1.text);
-                dersler[i].not2 = _guvenliNotOku(n2.text);
-                dersler[i].sozlu = _guvenliNotOku(sz.text);
-                dersler[i].proje = _guvenliNotOku(pr.text);
+                dersler[i].n1 = _notOku(n1.text);
+                dersler[i].n2 = _notOku(n2.text);
+                dersler[i].sz = _notOku(sz.text);
+                dersler[i].pr = _notOku(pr.text);
               });
               _kaydet(); Navigator.pop(context);
             },
@@ -309,10 +313,10 @@ class _TekDersEkraniState extends State<TekDersEkrani> {
 
   void _hesapla() {
     double t = 0; int s = 0;
-    double n1 = _guvenliNotOku(_s1.text); if (n1 >= 0) { t += n1; s++; }
-    if (_ikinci) { double n2 = _guvenliNotOku(_s2.text); if (n2 >= 0) { t += n2; s++; } }
-    double nS = _guvenliNotOku(_sz.text); if (nS >= 0) { t += nS; s++; }
-    double nP = _guvenliNotOku(_pr.text); if (nP >= 0) { t += nP; s++; }
+    double n1 = _notOku(_s1.text); if (n1 >= 0) { t += n1; s++; }
+    if (_ikinci) { double n2 = _notOku(_s2.text); if (n2 >= 0) { t += n2; s++; } }
+    double nS = _notOku(_sz.text); if (nS >= 0) { t += nS; s++; }
+    double nP = _notOku(_pr.text); if (nP >= 0) { t += nP; s++; }
     setState(() => _sonuc = s == 0 ? "Hiç not girilmedi!" : "Ortalama: ${(t / s).toStringAsFixed(2)}");
   }
 
@@ -362,15 +366,15 @@ class _DonemSonuEkraniState extends State<DonemSonuEkrani> {
   void _hesapla() {
     double t = 0; int s = 0;
     if (!_tekTek) {
-      double n1 = _guvenliNotOku(_o1.text); if (n1 >= 0) { t += n1; s++; }
-      double n2 = _guvenliNotOku(_o2.text); if (n2 >= 0) { t += n2; s++; }
+      double n1 = _notOku(_o1.text); if (n1 >= 0) { t += n1; s++; }
+      double n2 = _notOku(_o2.text); if (n2 >= 0) { t += n2; s++; }
     } else {
-      double n1_1 = _guvenliNotOku(_s1_1.text); if (n1_1 >= 0) { t += n1_1; s++; }
-      double n1_2 = _guvenliNotOku(_s1_2.text); if (n1_2 >= 0) { t += n1_2; s++; }
-      double n2_1 = _guvenliNotOku(_s2_1.text); if (n2_1 >= 0) { t += n2_1; s++; }
-      double n2_2 = _guvenliNotOku(_s2_2.text); if (n2_2 >= 0) { t += n2_2; s++; }
-      double nS = _guvenliNotOku(_sz.text); if (nS >= 0) { t += nS; s++; }
-      double nP = _guvenliNotOku(_pr.text); if (nP >= 0) { t += nP; s++; }
+      double n1_1 = _notOku(_s1_1.text); if (n1_1 >= 0) { t += n1_1; s++; }
+      double n1_2 = _notOku(_s1_2.text); if (n1_2 >= 0) { t += n1_2; s++; }
+      double n2_1 = _notOku(_s2_1.text); if (n2_1 >= 0) { t += n2_1; s++; }
+      double n2_2 = _notOku(_s2_2.text); if (n2_2 >= 0) { t += n2_2; s++; }
+      double nS = _notOku(_sz.text); if (nS >= 0) { t += nS; s++; }
+      double nP = _notOku(_pr.text); if (nP >= 0) { t += nP; s++; }
     }
     if (s == 0) { setState(() => _sonuc = "Not girilmedi!"); return; }
     setState(() => _sonuc = "DÖNEM SONU ORTALAMASI:\n${(t / s).toStringAsFixed(2)}");
@@ -427,8 +431,13 @@ class _YilSonuEkraniState extends State<YilSonuEkrani> {
   String _sonuc = "";
 
   void _hesapla() {
-    double? n1 = double.tryParse(_d1.text); double? n2 = double.tryParse(_d2.text);
-    if (n1 == null || n2 == null) { setState(() => _sonuc = "İki dönemi de gir!"); return; }
+    double? p1 = double.tryParse(_d1.text);
+    double? p2 = double.tryParse(_d2.text);
+    if (p1 == null || p2 == null) { 
+      setState(() => _sonuc = "İki dönemi de gir!"); 
+      return; 
+    }
+    double n1 = p1; double n2 = p2;
     if (n1 > 100) n1 = 100; if (n2 > 100) n2 = 100;
     setState(() => _sonuc = "YIL SONU ORTALAMASI:\n${((n1 + n2) / 2).toStringAsFixed(2)}");
   }
