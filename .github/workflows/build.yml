@@ -28,19 +28,25 @@ jobs:
           flutter create --project-name not_hesaplama --platforms android .
           cp /tmp/main.dart lib/main.dart
           
-      # UYGULAMANIN ADINI DEĞİŞTİREN KISIM
       - name: Change App Name
         run: |
           sed -i 's/android:label="not_hesaplama"/android:label="Notlarını Hesapla"/g' android/app/src/main/AndroidManifest.xml
           
       - name: Get dependencies
         run: flutter pub get
+
+      - name: Install Launcher Icons
+        run: |
+          flutter pub add --dev flutter_launcher_icons
+          printf 'flutter_launcher_icons:\n  android: "launcher_icon"\n  image_path: "logo.png"\n' > flutter_launcher_icons.yaml
+          flutter pub run flutter_launcher_icons
         
-      - name: Build APK (Split Per ABI for lowest size)
-        run: flutter build apk --release --split-per-abi
+      # SADECE 64-BIT (ARM64) İÇİN DERLEME (En düşük boyut)
+      - name: Build APK (64-bit only)
+        run: flutter build apk --release --target-platform android-arm64
         
-      - name: Upload APKs
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apks
-          path: build/app/outputs/flutter-apk/*.apk
+          name: app-release
+          path: build/app/outputs/flutter-apk/app-release.apk
