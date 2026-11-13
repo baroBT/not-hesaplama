@@ -28,6 +28,11 @@ jobs:
           flutter create --project-name not_hesaplama --platforms android .
           cp /tmp/main.dart lib/main.dart
           
+      # UYGULAMANIN ADINI DEĞİŞTİREN KISIM
+      - name: Change App Name
+        run: |
+          sed -i 's/android:label="not_hesaplama"/android:label="Notlarını Hesapla"/g' android/app/src/main/AndroidManifest.xml
+          
       - name: Get dependencies
         run: flutter pub get
         
