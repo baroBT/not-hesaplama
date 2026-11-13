@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 
 void main() {
   runApp(const BaroBTApp());
@@ -28,11 +30,23 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      if (!mounted) return; 
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const IsimEkrani()));
-    });
+    _checkUser();
   }
+
+  Future<void> _checkUser() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? isim = prefs.getString('kullanici_adi');
+    
+    await Future.delayed(const Duration(seconds: 2));
+    if (!mounted) return;
+    
+    if (isim != null && isim.isNotEmpty) {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AnaMenuEkrani(kullaniciAdi: isim)));
+    } else {
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const IsimEkrani()));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
@@ -72,8 +86,11 @@ class _IsimEkraniState extends State<IsimEkrani> {
             TextField(controller: _isimController, decoration: const InputDecoration(border: OutlineInputBorder())),
             const SizedBox(height: 20),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
                 if (_isimController.text.isNotEmpty) {
+                  SharedPreferences prefs = await SharedPreferences.getInstance();
+                  await prefs.setString('kullanici_adi', _isimController.text);
+                  if (!mounted) return;
                   Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => AnaMenuEkrani(kullaniciAdi: _isimController.text)));
                 }
               },
@@ -110,7 +127,7 @@ class AnaMenuEkrani extends StatelessWidget {
   }
 }
 
-// --- GENEL NOT HESAPLAMA ---
+// --- GENEL NOT HESAPLAMA (KALICI) ---
 class Ders {
   String ad;
   int saat;
@@ -120,6 +137,18 @@ class Ders {
   double proje;
   
   Ders(this.ad, this.saat, {this.not1 = -1, this.not2 = -1, this.sozlu = -1, this.proje = -1});
+
+  Map<String, dynamic> toJson() => {
+    'ad': ad, 'saat': saat, 'not1': not1, 'not2': not2, 'sozlu': sozlu, 'proje': proje
+  };
+
+  factory Ders.fromJson(Map<String, dynamic> json) => Ders(
+    json['ad'], (json['saat'] as num).toInt(),
+    not1: (json['not1'] as num).toDouble(),
+    not2: (json['not2'] as num).toDouble(),
+    sozlu: (json['sozlu'] as num).toDouble(),
+    proje: (json['proje'] as num).toDouble(),
+  );
 }
 
 class GenelNotEkrani extends StatefulWidget {
@@ -129,12 +158,41 @@ class GenelNotEkrani extends StatefulWidget {
 }
 
 class _GenelNotEkraniState extends State<GenelNotEkrani> {
-  List<Ders> dersler = [
-    Ders('Matematik', 6), Ders('Türkçe', 5), Ders('Fen Bilimleri', 4), Ders('Sosyal Bilgiler', 3),
-  ];
+  List<Ders> dersler = [];
   final TextEditingController _dersAdController = TextEditingController();
   final TextEditingController _dersSaatController = TextEditingController();
   String _sonuc = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _dersleriYukle();
+  }
+
+  Future<void> _dersleriYukle() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? dersJson = prefs.getString('dersler');
+    
+    if (dersJson != null) {
+      List<dynamic> list = jsonDecode(dersJson);
+      setState(() {
+        dersler = list.map((e) => Ders.fromJson(e)).toList();
+      });
+    } else {
+      setState(() {
+        dersler = [
+          Ders('Matematik', 6), Ders('Türkçe', 5), Ders('Fen Bilimleri', 4), Ders('Sosyal Bilgiler', 3),
+        ];
+      });
+      _dersleriKaydet();
+    }
+  }
+
+  Future<void> _dersleriKaydet() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String dersJson = jsonEncode(dersler.map((e) => e.toJson()).toList());
+    await prefs.setString('dersler', dersJson);
+  }
 
   double _dersOrtalama(Ders d) {
     double toplam = 0;
@@ -185,7 +243,10 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
                     ),
                     leading: IconButton(
                       icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () { setState(() { dersler.removeAt(index); }); },
+                      onPressed: () { 
+                        setState(() { dersler.removeAt(index); }); 
+                        _dersleriKaydet();
+                      },
                     ),
                   ),
                 );
@@ -209,6 +270,7 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
                             dersler.add(Ders(_dersAdController.text, int.tryParse(_dersSaatController.text) ?? 1));
                             _dersAdController.clear(); _dersSaatController.clear();
                           });
+                          _dersleriKaydet();
                         }
                       },
                     )
@@ -274,14 +336,13 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
                 dersler[index].not1 = double.tryParse(n1.text) ?? -1;
                 dersler[index].not2 = double.tryParse(n2.text) ?? -1;
                 dersler[index].sozlu = double.tryParse(sz.text) ?? -1;
-                
-                // BURASI DÜZELTİLDİ: Harf girilirse -1 sayar (0 değil)
                 if (pr.text.trim().toUpperCase() == 'G' || pr.text.trim().isEmpty) {
                   dersler[index].proje = -1; 
                 } else {
                   dersler[index].proje = double.tryParse(pr.text) ?? -1; 
                 }
               });
+              _dersleriKaydet();
               Navigator.pop(context);
             },
             child: const Text('Kaydet'),
