@@ -120,12 +120,20 @@ class AnaMenuEkrani extends StatelessWidget {
   }
 }
 
+// --- YARDIMCI FONKSİYONLAR ---
 double _notOku(String t) {
   if (t.trim().isEmpty || t.trim().toUpperCase() == 'G') return -1;
   double? val = double.tryParse(t);
   if (val == null || val < 0) return -1;
   if (val > 100) return 100;
   return val;
+}
+
+String _belgeMesaji(double ort, int zayif) {
+  if (zayif > 0) return "TEBRİKLER HİÇBİR ŞEY ALAMADIN MAŞALLAH!\n($zayif zayıf dersin var)";
+  if (ort >= 85) return "TEBRİKLER TAKDİR BELGESİ ALDIN! ÇOK İYİ!";
+  if (ort >= 70) return "TEBRİKLER TEŞEKKÜR BELGESİ ALDIN! İYİ!";
+  return "TEBRİKLER HİÇBİR ŞEY ALAMADIN MAŞALLAH!";
 }
 
 class Ders {
@@ -139,6 +147,7 @@ class Ders {
   );
 }
 
+// --- GENEL NOT HESAPLAMA (Sadece 1. Sınav ve Sözlü Mantığı) ---
 class GenelNotEkrani extends StatefulWidget {
   const GenelNotEkrani({Key? key}) : super(key: key);
   @override
@@ -172,9 +181,7 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
   double _ort(Ders d) {
     double t = 0; int s = 0;
     if (d.n1 >= 0) { t += d.n1; s++; }
-    if (d.n2 >= 0) { t += d.n2; s++; }
     if (d.sz >= 0) { t += d.sz; s++; }
-    if (d.pr >= 0) { t += d.pr; s++; }
     return s == 0 ? -1 : t / s;
   }
 
@@ -201,7 +208,7 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
                     margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     child: ListTile(
                       title: Text('${d.ad} (${d.saat} Saat)'),
-                      subtitle: Text(o == -1 ? 'Not girilmedi' : 'Ortalama: ${o.toStringAsFixed(2)}'),
+                      subtitle: Text(o == -1 ? 'Not girilmedi' : '1. Sınav Ort: ${o.toStringAsFixed(2)}'),
                       trailing: IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _dialog(context, i)),
                       leading: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () { setState(() => dersler.removeAt(i)); _kaydet(); }),
                     ),
@@ -243,10 +250,160 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
                         else if (gOrt >= 60) { y = "ORTA 😐"; }
                         else if (gOrt >= 50) { y = "EH İŞTE 🤷‍♂️"; }
                         else { y = "İDARE EDER... (Geçtin sayılır) 😬"; }
-                        _sonuc = "Ortalaman: ${gOrt.toStringAsFixed(2)}\n$y";
+                        _sonuc = "1. Sınav Ortalaman: ${gOrt.toStringAsFixed(2)}\n$y";
                       });
                     },
                     child: const Text('Hesapla'),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(_sonuc, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo, fontSize: 16)),
+                ],
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _dialog(BuildContext context, int i) {
+    final n1 = TextEditingController(text: dersler[i].n1 >= 0 ? dersler[i].n1.toString() : '');
+    final sz = TextEditingController(text: dersler[i].sz >= 0 ? dersler[i].sz.toString() : '');
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${dersler[i].ad} 1. Sınav Notu'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(controller: n1, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '1. Sınav')),
+            TextField(controller: sz, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Sözlü')),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                dersler[i].n1 = _notOku(n1.text);
+                dersler[i].sz = _notOku(sz.text);
+              });
+              _kaydet(); Navigator.pop(context);
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// --- DÖNEM SONU (KARNE) EKRANI (1. ve 2. Sınav + Proje) ---
+class DonemSonuEkrani extends StatefulWidget {
+  const DonemSonuEkrani({Key? key}) : super(key: key);
+  @override
+  State<DonemSonuEkrani> createState() => _DonemSonuEkraniState();
+}
+
+class _DonemSonuEkraniState extends State<DonemSonuEkrani> {
+  List<Ders> dersler = [];
+  final _adC = TextEditingController(); final _saatC = TextEditingController();
+  String _sonuc = "";
+
+  @override
+  void initState() { super.initState(); _yukle(); }
+
+  Future<void> _yukle() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? json = prefs.getString('dersler');
+    if (json != null) {
+      setState(() => dersler = (jsonDecode(json) as List).map((e) => Ders.fromJson(e)).toList());
+    } else {
+      setState(() => dersler = [Ders('Matematik', 6), Ders('Türkçe', 5), Ders('Fen Bilimleri', 4), Ders('Sosyal Bilgiler', 3)]);
+      _kaydet();
+    }
+  }
+
+  Future<void> _kaydet() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('dersler', jsonEncode(dersler.map((e) => e.toJson()).toList()));
+  }
+
+  double _dersOrt(Ders d) {
+    double t = 0; int s = 0;
+    if (d.n1 >= 0) { t += d.n1; s++; }
+    if (d.n2 >= 0) { t += d.n2; s++; }
+    if (d.sz >= 0) { t += d.sz; s++; }
+    if (d.pr >= 0) { t += d.pr; s++; }
+    return s == 0 ? -1 : t / s;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double gT = 0; int tS = 0; int zayif = 0;
+    for (var d in dersler) {
+      double o = _dersOrt(d);
+      if (o != -1) { 
+        gT += o * d.saat; tS += d.saat; 
+        if (o < 50) zayif++;
+      }
+    }
+    double gOrt = tS == 0 ? -1 : gT / tS;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Dönem Sonu (Karne)')),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView.builder(
+                itemCount: dersler.length,
+                itemBuilder: (context, i) {
+                  final d = dersler[i]; double o = _dersOrt(d);
+                  return Card(
+                    margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    child: ListTile(
+                      title: Text('${d.ad} (${d.saat} Saat)'),
+                      subtitle: Text(o == -1 ? 'Not girilmedi' : 'Dönem Ort: ${o.toStringAsFixed(2)}'),
+                      trailing: IconButton(icon: const Icon(Icons.edit, color: Colors.blue), onPressed: () => _dialog(context, i)),
+                      leading: IconButton(icon: const Icon(Icons.delete, color: Colors.red), onPressed: () { setState(() => dersler.removeAt(i)); _kaydet(); }),
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(10.0),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: TextField(controller: _adC, decoration: const InputDecoration(hintText: 'Ders Adı', isDense: true))),
+                      const SizedBox(width: 10),
+                      Expanded(child: TextField(controller: _saatC, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Saat (Max 40)', isDense: true))),
+                      IconButton(
+                        icon: const Icon(Icons.add, color: Colors.green),
+                        onPressed: () {
+                          if (_adC.text.isNotEmpty && _saatC.text.isNotEmpty) {
+                            int s = int.tryParse(_saatC.text) ?? 1;
+                            if (s > 40) s = 40; if (s < 1) s = 1;
+                            setState(() { dersler.add(Ders(_adC.text, s)); _adC.clear(); _saatC.clear(); });
+                            _kaydet();
+                          }
+                        },
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        if (gOrt == -1) { _sonuc = "Henüz hiçbir derse not girilmedi."; return; }
+                        _sonuc = "Dönem Ortalaması: ${gOrt.toStringAsFixed(2)}\n${_belgeMesaji(gOrt, zayif)}";
+                      });
+                    },
+                    child: const Text('Karnemi Hesapla'),
                   ),
                   const SizedBox(height: 8),
                   Text(_sonuc, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.indigo, fontSize: 16)),
@@ -268,7 +425,7 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('${dersler[i].ad} Notları'),
+        title: Text('${dersler[i].ad} Karne Notları'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -333,134 +490,4 @@ class _TekDersEkraniState extends State<TekDersEkrani> {
           child: SingleChildScrollView(
             child: Column(
               children: [
-                TextField(controller: _s1, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '1. Sınav')),
-                if (_ikinci) TextField(controller: _s2, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '2. Sınav')),
-                TextField(controller: _sz, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Sözlü')),
-                TextField(controller: _pr, decoration: const InputDecoration(labelText: 'Proje (0 veya G)')),
-                const SizedBox(height: 20),
-                ElevatedButton(onPressed: _hesapla, child: const Text('Hesapla')),
-                const SizedBox(height: 20),
-                Text(_sonuc, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class DonemSonuEkrani extends StatefulWidget {
-  const DonemSonuEkrani({Key? key}) : super(key: key);
-  @override
-  State<DonemSonuEkrani> createState() => _DonemSonuEkraniState();
-}
-class _DonemSonuEkraniState extends State<DonemSonuEkrani> {
-  bool _tekTek = false;
-  final _o1 = TextEditingController(); final _o2 = TextEditingController();
-  final _s1_1 = TextEditingController(); final _s1_2 = TextEditingController();
-  final _s2_1 = TextEditingController(); final _s2_2 = TextEditingController();
-  final _sz = TextEditingController(); final _pr = TextEditingController();
-  String _sonuc = "";
-
-  void _hesapla() {
-    double t = 0; int s = 0;
-    if (!_tekTek) {
-      double n1 = _notOku(_o1.text); if (n1 >= 0) { t += n1; s++; }
-      double n2 = _notOku(_o2.text); if (n2 >= 0) { t += n2; s++; }
-    } else {
-      double n1_1 = _notOku(_s1_1.text); if (n1_1 >= 0) { t += n1_1; s++; }
-      double n1_2 = _notOku(_s1_2.text); if (n1_2 >= 0) { t += n1_2; s++; }
-      double n2_1 = _notOku(_s2_1.text); if (n2_1 >= 0) { t += n2_1; s++; }
-      double n2_2 = _notOku(_s2_2.text); if (n2_2 >= 0) { t += n2_2; s++; }
-      double nS = _notOku(_sz.text); if (nS >= 0) { t += nS; s++; }
-      double nP = _notOku(_pr.text); if (nP >= 0) { t += nP; s++; }
-    }
-    if (s == 0) { setState(() => _sonuc = "Not girilmedi!"); return; }
-    setState(() => _sonuc = "DÖNEM SONU ORTALAMASI:\n${(t / s).toStringAsFixed(2)}");
-  }
-
-  Widget _alan(TextEditingController c, String l) => TextField(controller: c, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l));
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dönem Sonu (Karne)'),
-        actions: [ Row(children: [ const Text('Tek Tek', style: TextStyle(fontSize: 12)), Switch(value: _tekTek, onChanged: (v) => setState(() { _tekTek = v; _sonuc = ""; })) ]) ],
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                if (!_tekTek) ...[
-                  const Text('Sınav Ortalamalarını Gir', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                  _alan(_o1, '1. Sınav Ortalaması'),
-                  _alan(_o2, '2. Sınav Ortalaması'),
-                ] else ...[
-                  const Text('1. Sınav Notları', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                  _alan(_s1_1, '1. Sınav'), _alan(_s1_2, '2. Sınav'),
-                  const Text('2. Sınav Notları', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                  _alan(_s2_1, '1. Sınav'), _alan(_s2_2, '2. Sınav'),
-                  const SizedBox(height: 10),
-                  _alan(_sz, 'Sözlü Notu'), _alan(_pr, 'Proje (0 veya G)'),
-                ],
-                const SizedBox(height: 20),
-                ElevatedButton(onPressed: _hesapla, child: const Text('Karneyi Hesapla')),
-                const SizedBox(height: 20),
-                Text(_sonuc, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class YilSonuEkrani extends StatefulWidget {
-  const YilSonuEkrani({Key? key}) : super(key: key);
-  @override
-  State<YilSonuEkrani> createState() => _YilSonuEkraniState();
-}
-
-class _YilSonuEkraniState extends State<YilSonuEkrani> {
-  final _d1 = TextEditingController(); final _d2 = TextEditingController();
-  String _sonuc = "";
-
-  void _hesapla() {
-    double? p1 = double.tryParse(_d1.text);
-    double? p2 = double.tryParse(_d2.text);
-    if (p1 == null || p2 == null) { 
-      setState(() => _sonuc = "İki dönemi de gir!"); 
-      return; 
-    }
-    double n1 = p1; double n2 = p2;
-    if (n1 > 100) n1 = 100; if (n2 > 100) n2 = 100;
-    setState(() => _sonuc = "YIL SONU ORTALAMASI:\n${((n1 + n2) / 2).toStringAsFixed(2)}");
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Yıl Sonu Ortalaması')),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              TextField(controller: _d1, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '1. Dönem Ortalaması')),
-              TextField(controller: _d2, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '2. Dönem Ortalaması')),
-              const SizedBox(height: 20),
-              ElevatedButton(onPressed: _hesapla, child: const Text('Hesapla')),
-              const SizedBox(height: 20),
-              Text(_sonuc, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+                TextField(controller: _s1, keyboardType: TextInputTy
