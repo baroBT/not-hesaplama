@@ -458,10 +458,69 @@ class _DonemSonuEkraniState extends State<DonemSonuEkrani> {
   }
 }
 
+/ = 100;
+
 // --- AYRI SEKME: YIL SONU ORTALAMASI ---
 class YilSonuEkrani extends StatefulWidget {
   const YilSonuEkrani({Key? key}) : super(key: key);
   @override
   State<YilSonuEkrani> createState() => _YilSonuEkraniState();
 }
+
 class _YilSonuEkraniState extends State<YilSonuEkrani> {
+  final _d1 = TextEditingController();
+  final _d2 = TextEditingController();
+  String _sonuc = "";
+
+  void _hesapla() {
+    double? n1 = double.tryParse(_d1.text);
+    double? n2 = double.tryParse(_d2.text);
+    
+    if (n1 == null || n2 == null) { 
+      setState(() => _sonuc = "İki dönemi de gir!"); 
+      return; 
+    }
+    
+    if (n1 > 100) n1 = 100; 
+    if (n2 > 100) n2 = 100;
+    
+    setState(() => _sonuc = "YIL SONU ORTALAMASI:\n${((n1 + n2) / 2).toStringAsFixed(2)}");
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Yıl Sonu Ortalaması')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              TextField(
+                controller: _d1, 
+                keyboardType: TextInputType.number, 
+                decoration: const InputDecoration(labelText: '1. Dönem Ortalaması')
+              ),
+              TextField(
+                controller: _d2, 
+                keyboardType: TextInputType.number, 
+                decoration: const InputDecoration(labelText: '2. Dönem Ortalaması')
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: _hesapla, 
+                child: const Text('Hesapla')
+              ),
+              const SizedBox(height: 20),
+              Text(
+                _sonuc, 
+                textAlign: TextAlign.center, 
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.indigo)
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
