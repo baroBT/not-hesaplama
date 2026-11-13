@@ -10,14 +10,14 @@ class BaroBTApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Not Hesaplama',
+      title: 'Notlarını Hesapla',
       theme: ThemeData(primarySwatch: Colors.blue, useMaterial3: true),
       home: const SplashScreen(),
     );
   }
 }
 
-// --- 1. AÇILIŞ EKRANI ---
+// --- AÇILIŞ EKRANI ---
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
   @override
@@ -41,17 +41,9 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Üstteki büyük yazı
-            Text(
-              'Baro-BT Studios', 
-              style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.cyanAccent, letterSpacing: 2.0),
-            ),
+            Text('Baro-BT Studios', style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.cyanAccent, letterSpacing: 2.0)),
             SizedBox(height: 15),
-            // Alttaki havalı alt yazı
-            Text(
-              'Notlarını Hesapla', 
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: Colors.white70, letterSpacing: 1.5),
-            ),
+            Text('Notlarını Hesapla', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w500, color: Colors.white70, letterSpacing: 1.5)),
           ],
         ),
       ),
@@ -59,7 +51,7 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// --- 2. İSİM SORMA ---
+// --- İSİM SORMA ---
 class IsimEkrani extends StatefulWidget {
   const IsimEkrani({Key? key}) : super(key: key);
   @override
@@ -94,7 +86,7 @@ class _IsimEkraniState extends State<IsimEkrani> {
   }
 }
 
-// --- 3. ANA MENÜ ---
+// --- ANA MENÜ ---
 class AnaMenuEkrani extends StatelessWidget {
   final String kullaniciAdi;
   const AnaMenuEkrani({Key? key, required this.kullaniciAdi}) : super(key: key);
@@ -118,7 +110,7 @@ class AnaMenuEkrani extends StatelessWidget {
   }
 }
 
-// --- 4. GENEL NOT HESAPLAMA (MATEMATİKSEL OLARAK KUSURSUZ) ---
+// --- GENEL NOT HESAPLAMA ---
 class Ders {
   String ad;
   int saat;
@@ -127,7 +119,6 @@ class Ders {
   double sozlu;
   double proje;
   
-  // -1 = Girilmedi, 0 = Gerçek 0
   Ders(this.ad, this.saat, {this.not1 = -1, this.not2 = -1, this.sozlu = -1, this.proje = -1});
 }
 
@@ -152,7 +143,7 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
     if (d.not2 >= 0) { toplam += d.not2; sayac++; }
     if (d.sozlu >= 0) { toplam += d.sozlu; sayac++; }
     if (d.proje >= 0) { toplam += d.proje; sayac++; }
-    return sayac == 0 ? -1 : toplam / sayac; // -1: Hiç not yok
+    return sayac == 0 ? -1 : toplam / sayac;
   }
 
   @override
@@ -162,14 +153,12 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
     
     for (var d in dersler) {
       double ort = _dersOrtalama(d);
-      if (ort != -1) { // Sadece notu girilmiş dersleri ortalamaya kat
+      if (ort != -1) {
         genelToplam += ort * d.saat;
         toplamSaat += d.saat;
       }
     }
     double genelOrtalama = toplamSaat == 0 ? -1 : genelToplam / toplamSaat;
-    
-    // Sadece notu girilmiş VE 50 altı olanları zayıf say
     int zayifSayisi = dersler.where((d) {
       double o = _dersOrtalama(d);
       return o != -1 && o < 50;
@@ -285,10 +274,12 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
                 dersler[index].not1 = double.tryParse(n1.text) ?? -1;
                 dersler[index].not2 = double.tryParse(n2.text) ?? -1;
                 dersler[index].sozlu = double.tryParse(sz.text) ?? -1;
+                
+                // BURASI DÜZELTİLDİ: Harf girilirse -1 sayar (0 değil)
                 if (pr.text.trim().toUpperCase() == 'G' || pr.text.trim().isEmpty) {
-                  dersler[index].proje = -1; // G veya boşsa girilmedi say
+                  dersler[index].proje = -1; 
                 } else {
-                  dersler[index].proje = double.tryParse(pr.text) ?? 0;
+                  dersler[index].proje = double.tryParse(pr.text) ?? -1; 
                 }
               });
               Navigator.pop(context);
@@ -301,7 +292,7 @@ class _GenelNotEkraniState extends State<GenelNotEkrani> {
   }
 }
 
-// --- 5. TEK DERS EKRANI ---
+// --- TEK DERS EKRANI ---
 class TekDersEkrani extends StatefulWidget {
   const TekDersEkrani({Key? key}) : super(key: key);
   @override
@@ -318,7 +309,7 @@ class _TekDersEkraniState extends State<TekDersEkrani> {
   double _notOku(String text, {bool projeMi = false}) {
     if (text.trim().isEmpty) return -1; 
     if (projeMi && text.trim().toUpperCase() == 'G') return -1; 
-    return double.tryParse(text) ?? -1; // Harf girilirse boş say
+    return double.tryParse(text) ?? -1;
   }
 
   void _hesapla() {
@@ -382,7 +373,7 @@ class _TekDersEkraniState extends State<TekDersEkrani> {
   }
 }
 
-// --- 6. DÖNEM HESAPLAMA EKRANI ---
+// --- DÖNEM HESAPLAMA EKRANI ---
 class DonemEkrani extends StatefulWidget {
   final String kullaniciAdi;
   const DonemEkrani({Key? key, required this.kullaniciAdi}) : super(key: key);
