@@ -33,15 +33,16 @@ jobs:
           sed -i 's/android:label="not_hesaplama"/android:label="Notlarını Hesapla"/g' android/app/src/main/AndroidManifest.xml
           
       - name: Get dependencies
-        run: flutter pub get
+        run: |
+          flutter pub add shared_preferences
+          flutter pub add --dev flutter_launcher_icons
+          flutter pub get
 
       - name: Install Launcher Icons
         run: |
-          flutter pub add --dev flutter_launcher_icons
           printf 'flutter_launcher_icons:\n  android: "launcher_icon"\n  image_path: "logo.png"\n' > flutter_launcher_icons.yaml
           flutter pub run flutter_launcher_icons
         
-      # SADECE 64-BIT (ARM64) İÇİN DERLEME (En düşük boyut)
       - name: Build APK (64-bit only)
         run: flutter build apk --release --target-platform android-arm64
         
